@@ -18,7 +18,7 @@ jobs:
 
       - name: Generar briefing del día
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
         run: |
           claude -p "Eres el asistente diario de Roger Soto, quien tiene dos negocios: envíos de remesas a Venezuela y una tienda online de carteras para damas (D&M Dosis de Moda). Escribe (sobrescribe) el archivo briefing.md en la raíz de este repo con formato Markdown, en español, con esta estructura:
 
