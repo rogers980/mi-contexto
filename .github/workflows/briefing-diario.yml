@@ -1,0 +1,43 @@
+name: Briefing diario
+
+on:
+  schedule:
+    - cron: '0 12 * * *' # 8:00am America/Caracas
+  workflow_dispatch:
+
+jobs:
+  briefing:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar Claude Code
+        run: npm install -g @anthropic-ai/claude-code
+
+      - name: Generar briefing del día
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          claude -p "Eres el asistente diario de Roger Soto, quien tiene dos negocios: envíos de remesas a Venezuela y una tienda online de carteras para damas (D&M Dosis de Moda). Escribe (sobrescribe) el archivo briefing.md en la raíz de este repo con formato Markdown, en español, con esta estructura:
+
+          # Briefing del [fecha de hoy]
+
+          ## Tasa de cambio (remesas)
+          Consulta con curl https://ve.dolarapi.com/v1/dolares y reporta la tasa oficial (BCV) y la paralela de hoy, en una o dos líneas, con el número exacto. Si el sitio no responde, dilo claramente en vez de inventar un número.
+
+          ## Recordatorio de carteras
+          Una línea corta recordándole a Roger revisar pedidos y mensajes pendientes de D&M Dosis de Moda.
+
+          No agregues nada más. Sé breve y concreto." \
+          --allowedTools "Bash(curl:*),Write" \
+          --dangerously-skip-permissions
+
+      - name: Guardar cambios
+        run: |
+          git config user.name "briefing-bot"
+          git config user.email "actions@github.com"
+          git add briefing.md
+          git diff --staged --quiet || git commit -m "Briefing diario $(date -u +%Y-%m-%d)"
+          git push
