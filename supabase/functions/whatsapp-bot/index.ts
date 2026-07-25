@@ -103,11 +103,11 @@ function buscarProductos(query: string): string {
     .join("\n");
 }
 
-const SYSTEM_PROMPT = `Eres el asistente de atencion al cliente de Roger Soto, quien tiene dos negocios:
-1. Envios de remesas a Venezuela.
-2. D&M Dosis de Moda: tienda online de carteras para damas, con app en Play Store y App Store.
+const SYSTEM_PROMPT = `Eres el asistente de atencion al cliente de D&M Dosis de Moda, la tienda online de carteras para damas de Roger Soto (con app en Play Store y App Store).
 
-Responde SIEMPRE en espanol, corto y directo, como por WhatsApp. Si preguntan por remesas (tasas, estado de un envio), o por carteras (precio, disponibilidad, pedidos), ayuda con la informacion que tengas en el contexto (catalogo real o memoria de la conversacion). Si no tienes el dato real (por ejemplo el estado exacto de un envio, una tasa del dia, o un producto que no esta en el catalogo que te paso), dilo honestamente y pide los datos necesarios para verificar - nunca inventes precios, tasas ni estados de pedidos.
+Este bot es SOLO para D&M Dosis de Moda (carteras) - no menciones remesas, envios de dinero a Venezuela, ni ningun otro negocio, aunque el cliente pregunte por eso (si lo hace, dile amablemente que este numero es solo para pedidos de carteras).
+
+Responde SIEMPRE en espanol, corto y directo, como por WhatsApp. Si preguntan por carteras (precio, disponibilidad, pedidos), ayuda con la informacion que tengas en el contexto (catalogo real o memoria de la conversacion). Si no tienes el dato real (por ejemplo un producto que no esta en el catalogo que te paso, o el estado de un pedido ya hecho), dilo honestamente y pide los datos necesarios para verificar - nunca inventes precios ni disponibilidad.
 
 IMPORTANTE: responde UNICAMENTE con el mensaje final para el cliente. Nunca muestres tu razonamiento interno, tus dudas, ni analices el problema paso a paso en la respuesta - eso nunca debe llegar al cliente por WhatsApp. Ve directo al mensaje final, corto y listo para enviar.`;
 
@@ -181,59 +181,6 @@ async function askClaude(userMessage: string, memoryContext: string, catalogoCon
   return data.choices?.[0]?.message?.content ?? "No entendi bien, me lo puedes repetir?";
 }
 
-// Tasa de cambio real (BCV oficial + Binance P2P paralelo) - agregado 2026-07-25, mismo patron que briefing-diario.yml
-async function fetchTasas(): Promise<string | null> {
-  try {
-    const [bcvRes, binanceRes] = await Promise.all([
-      fetch("https://ve.dolarapi.com/v1/dolares/oficial"),
-      fetch("https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          asset: "USDT",
-          fiat: "VES",
-          tradeType: "SELL",
-          page: 1,
-          rows: 5,
-          payTypes: [],
-        }),
-      }),
-    ]);
-
-    let oficial: number | null = null;
-    let paralelo: number | null = null;
-
-    if (bcvRes.ok) {
-      const bcvData = await bcvRes.json();
-      oficial = bcvData.promedio ?? null;
-    }
-
-    if (binanceRes.ok) {
-      const binanceData = await binanceRes.json();
-      const anuncios = binanceData.data ?? [];
-      if (anuncios.length > 0) {
-        const precios = anuncios.map((a: any) => parseFloat(a.adv.price));
-        paralelo = precios.reduce((a: number, b: number) => a + b, 0) / precios.length;
-      }
-    }
-
-    if (oficial === null && paralelo === null) return null;
-
-    const partes: string[] = [];
-    if (oficial !== null) partes.push(`Oficial (BCV): ${oficial.toFixed(2)} Bs/USD`);
-    if (paralelo !== null) partes.push(`Paralelo (Binance): ${paralelo.toFixed(2)} Bs/USD`);
-    return partes.join(" | ");
-  } catch (err) {
-    console.log(`[tasas] fetch failed: ${err}`);
-    return null;
-  }
-}
-
-function esPreguntaDeTasa(message: string): boolean {
-  const lower = normalizar(message);
-  return ["tasa", "dolar", "cambio", "bcv", "binance"].some((k) => lower.includes(k));
-}
-
 function twimlResponse(message: string): Response {
   const escaped = message
     .replace(/&/g, "&amp;")
@@ -257,20 +204,6 @@ Deno.serve(async (req) => {
   }
 
   maybeHandoff(body);
-
-  // Ruta deterministica: tasa de cambio. Nunca se le pide al modelo que "repita" el numero -
-  // se construye la respuesta directo en codigo para que el dato real nunca se distorsione.
-  if (esPreguntaDeTasa(body)) {
-    const tasas = await fetchTasas();
-    if (tasas) {
-      return twimlResponse(
-        `Hola! La tasa de hoy:\n${tasas}\n\nCualquier envio se calcula con estas tasas del momento.`,
-      );
-    }
-    return twimlResponse(
-      "Disculpa, no pude consultar la tasa real ahorita (falla de conexion). Intenta en un momento o te confirma Roger directo.",
-    );
-  }
 
   // Ruta deterministica: catalogo de carteras. Si hay coincidencias reales, se listan directo -
   // nunca se le pide al modelo gratis que decida disponibilidad, para no arriesgar que invente.
