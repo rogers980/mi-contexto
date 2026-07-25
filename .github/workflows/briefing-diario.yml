@@ -16,28 +16,40 @@ jobs:
       - name: Instalar Claude Code
         run: npm install -g @anthropic-ai/claude-code
 
-      - name: Generar briefing del día
+      - name: Generar el briefing y guardarlo con el MCP de GitHub
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          GITHUB_PERSONAL_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          claude -p "Eres el asistente diario de Roger Soto, quien tiene dos negocios: envíos de remesas a Venezuela y una tienda online de carteras para damas (D&M Dosis de Moda). Escribe (sobrescribe) el archivo briefing.md en la raíz de este repo con formato Markdown, en español, con esta estructura:
+          cat > /tmp/mcp-config.json << 'MCPEOF'
+          {
+            "mcpServers": {
+              "github": {
+                "command": "npx",
+                "args": ["-y", "@modelcontextprotocol/server-github"],
+                "env": { "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}" }
+              }
+            }
+          }
+          MCPEOF
+
+          claude -p "Eres el asistente diario de Roger Soto, quien tiene dos negocios: envíos de remesas a Venezuela y una tienda online de carteras para damas (D&M Dosis de Moda).
+
+          Paso 1: Consulta con curl https://ve.dolarapi.com/v1/dolares la tasa oficial (BCV) y la paralela de hoy. Si el sitio no responde, dilo claramente en vez de inventar un número.
+
+          Paso 2: Arma este contenido en Markdown, en español:
 
           # Briefing del [fecha de hoy]
 
           ## Tasa de cambio (remesas)
-          Consulta con curl https://ve.dolarapi.com/v1/dolares y reporta la tasa oficial (BCV) y la paralela de hoy, en una o dos líneas, con el número exacto. Si el sitio no responde, dilo claramente en vez de inventar un número.
+          [la tasa oficial y paralela, en una o dos líneas, con el número exacto]
 
           ## Recordatorio de carteras
           Una línea corta recordándole a Roger revisar pedidos y mensajes pendientes de D&M Dosis de Moda.
 
-          No agregues nada más. Sé breve y concreto." \
-          --allowedTools "Bash(curl:*),Write" \
-          --dangerously-skip-permissions
+          Paso 3: Usa la herramienta MCP de GitHub (create_or_update_file) para escribir ese contenido en el archivo briefing.md, en la raíz del repositorio rogers980/mi-contexto, rama main, sobrescribiendo el archivo anterior, con mensaje de commit 'Briefing diario' seguido de la fecha de hoy. No uses git ni comandos de Bash para guardar el archivo, usa exclusivamente la herramienta MCP de GitHub.
 
-      - name: Guardar cambios
-        run: |
-          git config user.name "briefing-bot"
-          git config user.email "actions@github.com"
-          git add briefing.md
-          git diff --staged --quiet || git commit -m "Briefing diario $(date -u +%Y-%m-%d)"
-          git push
+          Sé breve y concreto en el contenido." \
+          --mcp-config /tmp/mcp-config.json \
+          --allowedTools "Bash(curl:*),mcp__github__create_or_update_file" \
+          --dangerously-skip-permissions
