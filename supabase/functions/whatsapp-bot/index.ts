@@ -5,11 +5,111 @@ import "@supabase/functions-js/edge-runtime.d.ts";
 const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY") ?? "";
 const MEM0_API_KEY = Deno.env.get("MEM0_API_KEY") ?? "";
 
+// Catalogo REAL de D&M Dosis de Moda (copiado de dosis-de-moda/js/productos.js) - agregado 2026-07-25
+const PRODUCTOS = [
+  { nombre: "Monedero Coral Cerezas", precio: 28.99, categoria: "mini" },
+  { nombre: "Cartera Beige Tejida", precio: 32.50, categoria: "hombro" },
+  { nombre: "Cartera Naranja Compacta", precio: 25.00, categoria: "hombro" },
+  { nombre: "Cartera Vino Abovedada", precio: 29.99, categoria: "hombro" },
+  { nombre: "Cartera Blanca Acolchada", precio: 31.00, categoria: "hombro" },
+  { nombre: "Cartera Beige Acolchada", precio: 27.50, categoria: "hombro" },
+  { nombre: "Satchel Violeta Ejecutiva", precio: 35.99, categoria: "satchel" },
+  { nombre: "Mini Bandolera Pastel", precio: 23.50, categoria: "bandolera" },
+  { nombre: "Cartera Rosa Casual", precio: 24.99, categoria: "hombro" },
+  { nombre: "Satchel Cuero Cognac", precio: 38.00, categoria: "satchel" },
+  { nombre: "Clutch Negra Cadena Dorada", precio: 29.99, categoria: "clutch" },
+  { nombre: "Clutch Negra Elegante", precio: 27.50, categoria: "clutch" },
+  { nombre: "Tote Camel Minimalista", precio: 26.99, categoria: "tote" },
+  { nombre: "Clutch Blanco Satinado", precio: 22.99, categoria: "clutch" },
+  { nombre: "Bucket Negro Tejido con Flores", precio: 30.50, categoria: "bucket" },
+  { nombre: "Mini Clutch Café Elegante", precio: 25.99, categoria: "mini" },
+  { nombre: "Tote Canvas Café", precio: 21.99, categoria: "tote" },
+  { nombre: "Clutch Azul Cielo", precio: 33.00, categoria: "clutch" },
+  { nombre: "Satchel Cognac Doble Correa", precio: 34.99, categoria: "satchel", nuevo: true },
+  { nombre: "Bandolera Café Clásica", precio: 26.50, categoria: "bandolera", nuevo: true },
+  { nombre: "Bucket Beige Tejido Artesanal", precio: 31.99, categoria: "bucket", nuevo: true },
+  { nombre: "Mini Clutch Rojo Dorado", precio: 23.99, categoria: "mini", nuevo: true },
+  { nombre: "Bandolera Vino Crossbody", precio: 28.50, categoria: "bandolera", nuevo: true },
+  { nombre: "Satchel Estructurada Clásica", precio: 36.99, categoria: "satchel", nuevo: true },
+  { nombre: "Cartera Terracota Minimal", precio: 27.99, categoria: "hombro", nuevo: true },
+  { nombre: "Mini Clutch Colección Pastel", precio: 24.50, categoria: "mini", nuevo: true },
+  { nombre: "Cartera Roja Acolchada", precio: 29.50, categoria: "hombro", nuevo: true },
+  { nombre: "Satchel Café Multibolsillo", precio: 33.99, categoria: "satchel", nuevo: true },
+  { nombre: "Bandolera Vaquetilla Animal Print", precio: 27.99, categoria: "bandolera", nuevo: true },
+  { nombre: "Bucket Playero Rafia Natural", precio: 30.99, categoria: "bucket", nuevo: true },
+  { nombre: "Mini Bolso Floral Azul", precio: 22.99, categoria: "mini", nuevo: true },
+  { nombre: "Clutch Tapiz Floral Vintage", precio: 28.99, categoria: "clutch", nuevo: true },
+  { nombre: "Tote Blanco Colgado", precio: 24.50, categoria: "tote", nuevo: true },
+  { nombre: "Cartera Gris Bicolor", precio: 31.50, categoria: "hombro", nuevo: true },
+  { nombre: "Tote Negro Minimalista", precio: 25.99, categoria: "tote", nuevo: true },
+  { nombre: "Satchel Cognac Doble Hebilla", precio: 37.50, categoria: "satchel", nuevo: true },
+  { nombre: "Mini Bolso Ciruela Elegante", precio: 29.99, categoria: "mini", nuevo: true },
+  { nombre: "Bucket Tejido Playero", precio: 26.99, categoria: "bucket", nuevo: true },
+  { nombre: "Cartera Beige y Blanca", precio: 28.50, categoria: "hombro", nuevo: true },
+  { nombre: "Satchel Verde Oliva y Cuero", precio: 34.50, categoria: "satchel", nuevo: true },
+  { nombre: "Bandolera Blanca Cadena Dorada", precio: 27.99, categoria: "bandolera", nuevo: true },
+  { nombre: "Bucket Camel Bordado Boho", precio: 30.50, categoria: "bucket", nuevo: true },
+  { nombre: "Mini Bolso Negro Acolchado", precio: 23.50, categoria: "mini", nuevo: true },
+  { nombre: "Clutch Rojo Fiesta", precio: 26.99, categoria: "clutch", nuevo: true },
+];
+
+function normalizar(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, ""); // quita acentos
+}
+
+function raiz(palabra: string): string {
+  // Normaliza plural y genero (negras/negros/negra/negro -> negr; rojas/rojo -> roj)
+  return palabra.replace(/(as|os|es|a|o|s)$/, "");
+}
+
+const STOPWORDS = new Set([
+  "tienen", "tiene", "tienes", "hay", "disponible", "disponibles", "alguna",
+  "alguno", "algun", "quiero", "busco", "queria", "necesito", "cuanto", "cuesta",
+  "cuestan", "precio", "precios", "para", "por", "una", "unos", "unas", "que",
+  "cartera", "carteras", "bolso", "bolsa", "bolsos", "bolsas", // termino generico, no distingue producto
+]);
+
+function buscarProductos(query: string): string {
+  const palabras = normalizar(query)
+    .replace(/[^a-z0-9\s]/g, " ") // quita signos de puntuacion (?,!,.,etc)
+    .split(/\s+/)
+    .filter((w) => w.length > 2)
+    .filter((w) => !STOPWORDS.has(w)) // stopword ANTES de la raiz (ej. "disponibles" ya listado tal cual)
+    .map(raiz);
+
+  if (palabras.length === 0) return "";
+
+  // Exige que TODAS las palabras clave coincidan (evita que "cartera" solo traiga cualquier color)
+  let encontrados = PRODUCTOS.filter((p) => {
+    const texto = normalizar(`${p.nombre} ${p.categoria}`);
+    return palabras.every((w) => texto.includes(w));
+  });
+
+  // Si nada coincide con todas las palabras, relaja a "al menos una" como respaldo
+  if (encontrados.length === 0) {
+    encontrados = PRODUCTOS.filter((p) => {
+      const texto = normalizar(`${p.nombre} ${p.categoria}`);
+      return palabras.some((w) => texto.includes(w));
+    });
+  }
+
+  if (encontrados.length === 0) return "";
+  return encontrados
+    .slice(0, 5)
+    .map((p) => `- ${p.nombre} (${p.categoria})${p.nuevo ? " [nuevo]" : ""}: $${p.precio.toFixed(2)}`)
+    .join("\n");
+}
+
 const SYSTEM_PROMPT = `Eres el asistente de atencion al cliente de Roger Soto, quien tiene dos negocios:
 1. Envios de remesas a Venezuela.
 2. D&M Dosis de Moda: tienda online de carteras para damas, con app en Play Store y App Store.
 
-Responde SIEMPRE en espanol, corto y directo, como por WhatsApp. Si preguntan por remesas (tasas, estado de un envio), o por carteras (precio, disponibilidad, pedidos), ayuda con la informacion que tengas en la memoria de la conversacion. Si no tienes el dato real (por ejemplo el estado exacto de un envio o una tasa del dia que no esta en el contexto), dilo honestamente y pide los datos necesarios para verificar - nunca inventes precios, tasas ni estados de pedidos.`;
+Responde SIEMPRE en espanol, corto y directo, como por WhatsApp. Si preguntan por remesas (tasas, estado de un envio), o por carteras (precio, disponibilidad, pedidos), ayuda con la informacion que tengas en el contexto (catalogo real o memoria de la conversacion). Si no tienes el dato real (por ejemplo el estado exacto de un envio, una tasa del dia, o un producto que no esta en el catalogo que te paso), dilo honestamente y pide los datos necesarios para verificar - nunca inventes precios, tasas ni estados de pedidos.
+
+IMPORTANTE: responde UNICAMENTE con el mensaje final para el cliente. Nunca muestres tu razonamiento interno, tus dudas, ni analices el problema paso a paso en la respuesta - eso nunca debe llegar al cliente por WhatsApp. Ve directo al mensaje final, corto y listo para enviar.`;
 
 // Palabras que activan traspaso a un humano (Roger)
 const HANDOFF_TRIGGERS = ["precio", "agendar", "no entiendo", "hablar con alguien", "humano"];
@@ -46,10 +146,13 @@ async function getUserMemories(phone: string, query: string): Promise<string> {
   }
 }
 
-async function askClaude(userMessage: string, memoryContext: string): Promise<string> {
-  const contextBlock = memoryContext
+async function askClaude(userMessage: string, memoryContext: string, catalogoContext: string): Promise<string> {
+  let contextBlock = memoryContext
     ? `\n\nContexto previo de este cliente (de conversaciones pasadas):\n${memoryContext}`
     : "";
+  if (catalogoContext) {
+    contextBlock += `\n\nProductos reales de D&M Dosis de Moda que coinciden con la pregunta (precio real, disponibles):\n${catalogoContext}`;
+  }
 
   // Usa el router gratis de OpenRouter (sin costo) en vez de la API paga de Anthropic.
   const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -78,6 +181,59 @@ async function askClaude(userMessage: string, memoryContext: string): Promise<st
   return data.choices?.[0]?.message?.content ?? "No entendi bien, me lo puedes repetir?";
 }
 
+// Tasa de cambio real (BCV oficial + Binance P2P paralelo) - agregado 2026-07-25, mismo patron que briefing-diario.yml
+async function fetchTasas(): Promise<string | null> {
+  try {
+    const [bcvRes, binanceRes] = await Promise.all([
+      fetch("https://ve.dolarapi.com/v1/dolares/oficial"),
+      fetch("https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          asset: "USDT",
+          fiat: "VES",
+          tradeType: "SELL",
+          page: 1,
+          rows: 5,
+          payTypes: [],
+        }),
+      }),
+    ]);
+
+    let oficial: number | null = null;
+    let paralelo: number | null = null;
+
+    if (bcvRes.ok) {
+      const bcvData = await bcvRes.json();
+      oficial = bcvData.promedio ?? null;
+    }
+
+    if (binanceRes.ok) {
+      const binanceData = await binanceRes.json();
+      const anuncios = binanceData.data ?? [];
+      if (anuncios.length > 0) {
+        const precios = anuncios.map((a: any) => parseFloat(a.adv.price));
+        paralelo = precios.reduce((a: number, b: number) => a + b, 0) / precios.length;
+      }
+    }
+
+    if (oficial === null && paralelo === null) return null;
+
+    const partes: string[] = [];
+    if (oficial !== null) partes.push(`Oficial (BCV): ${oficial.toFixed(2)} Bs/USD`);
+    if (paralelo !== null) partes.push(`Paralelo (Binance): ${paralelo.toFixed(2)} Bs/USD`);
+    return partes.join(" | ");
+  } catch (err) {
+    console.log(`[tasas] fetch failed: ${err}`);
+    return null;
+  }
+}
+
+function esPreguntaDeTasa(message: string): boolean {
+  const lower = normalizar(message);
+  return ["tasa", "dolar", "cambio", "bcv", "binance"].some((k) => lower.includes(k));
+}
+
 function twimlResponse(message: string): Response {
   const escaped = message
     .replace(/&/g, "&amp;")
@@ -102,8 +258,31 @@ Deno.serve(async (req) => {
 
   maybeHandoff(body);
 
+  // Ruta deterministica: tasa de cambio. Nunca se le pide al modelo que "repita" el numero -
+  // se construye la respuesta directo en codigo para que el dato real nunca se distorsione.
+  if (esPreguntaDeTasa(body)) {
+    const tasas = await fetchTasas();
+    if (tasas) {
+      return twimlResponse(
+        `Hola! La tasa de hoy:\n${tasas}\n\nCualquier envio se calcula con estas tasas del momento.`,
+      );
+    }
+    return twimlResponse(
+      "Disculpa, no pude consultar la tasa real ahorita (falla de conexion). Intenta en un momento o te confirma Roger directo.",
+    );
+  }
+
+  // Ruta deterministica: catalogo de carteras. Si hay coincidencias reales, se listan directo -
+  // nunca se le pide al modelo gratis que decida disponibilidad, para no arriesgar que invente.
+  const catalogoContext = buscarProductos(body);
+  if (catalogoContext) {
+    return twimlResponse(
+      `Hola! Esto tenemos disponible:\n${catalogoContext}\n\n¿Te interesa alguna? Te puedo ayudar con el pedido.`,
+    );
+  }
+
   const memoryContext = await getUserMemories(from, body);
-  const reply = await askClaude(body, memoryContext);
+  const reply = await askClaude(body, memoryContext, "");
 
   return twimlResponse(reply);
 });
