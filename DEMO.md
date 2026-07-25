@@ -3,7 +3,7 @@
 Guion para el video de 8 minutos. Graba tu pantalla + tu voz (ej. con el grabador de Windows, Loom, o OBS).
 
 ## Link al video
-_(pendiente — pega aquí el link cuando lo subas: YouTube sin listar, Loom, o Google Drive)_
+https://drive.google.com/file/d/1gdT5bSUMs_r6_7gJ0xOacu8_hUfkm-lT/view
 
 ## Guion (8 minutos)
 
