@@ -2,7 +2,7 @@
 // Arquitectura: Twilio (cartero) -> esta edge function (cerebro) -> Claude API -> Mem0 (memoria) -> TwiML de vuelta a Twilio
 import "@supabase/functions-js/edge-runtime.d.ts";
 
-const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
+const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY") ?? "";
 const MEM0_API_KEY = Deno.env.get("MEM0_API_KEY") ?? "";
 
 const SYSTEM_PROMPT = `Eres el asistente de atencion al cliente de Roger Soto, quien tiene dos negocios:
@@ -51,29 +51,31 @@ async function askClaude(userMessage: string, memoryContext: string): Promise<st
     ? `\n\nContexto previo de este cliente (de conversaciones pasadas):\n${memoryContext}`
     : "";
 
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  // Usa el router gratis de OpenRouter (sin costo) en vez de la API paga de Anthropic.
+  const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
-      "x-api-key": ANTHROPIC_API_KEY,
-      "anthropic-version": "2023-06-01",
+      Authorization: `Bearer ${OPENROUTER_API_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "claude-sonnet-5",
+      model: "openrouter/free",
       max_tokens: 400,
-      system: SYSTEM_PROMPT + contextBlock,
-      messages: [{ role: "user", content: userMessage }],
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT + contextBlock },
+        { role: "user", content: userMessage },
+      ],
     }),
   });
 
   if (!res.ok) {
     const errText = await res.text();
-    console.log(`[claude] error ${res.status}: ${errText}`);
+    console.log(`[openrouter] error ${res.status}: ${errText}`);
     return "Disculpa, tuve un problema respondiendo ahorita. Roger te va a escribir directo en un momento.";
   }
 
   const data = await res.json();
-  return data.content?.[0]?.text ?? "No entendi bien, me lo puedes repetir?";
+  return data.choices?.[0]?.message?.content ?? "No entendi bien, me lo puedes repetir?";
 }
 
 function twimlResponse(message: string): Response {
