@@ -195,9 +195,19 @@ Deno.serve(async (req) => {
     return twimlResponse("Metodo no soportado.");
   }
 
-  const form = await req.formData();
-  const body = String(form.get("Body") ?? "").trim();
-  const from = String(form.get("From") ?? "unknown");
+  // Twilio manda application/x-www-form-urlencoded - leemos como texto y parseamos
+  // manualmente para no depender de que formData() soporte ese content-type.
+  let params: URLSearchParams;
+  try {
+    const rawBody = await req.text();
+    params = new URLSearchParams(rawBody);
+  } catch (err) {
+    console.log(`[parse] error leyendo el body: ${err}`);
+    return twimlResponse("Error leyendo el mensaje.");
+  }
+  const body = (params.get("Body") ?? "").trim();
+  const from = params.get("From") ?? "unknown";
+  console.log(`[inbound] from="${from}" body="${body}"`);
 
   if (!body) {
     return twimlResponse("No recibi ningun mensaje.");
