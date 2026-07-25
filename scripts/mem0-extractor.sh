@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Extractor de hechos para Mem0 - Academia Catalizadora, Sesion 5.
-# Lee commits recientes de este repo y los guarda como memorias en Mem0.
+# Fuente 1 (automatizada, este script): git commits de este repo.
+# Fuente 2 (manual, vía sesión de Claude Code autenticada): progreso de la Academia Catalizadora (mcp__academia-catalizadora__ver_mi_progreso) - ya probada y guardada en Mem0.
+# Fuente 3 (bloqueada por ahora): Gmail - el conector OAuth de claude.ai no tiene permiso de lectura (search_threads da "insufficient authentication scopes"). Pendiente: reconectar Gmail con el scope de lectura desde claude.ai/customize/connectors.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
