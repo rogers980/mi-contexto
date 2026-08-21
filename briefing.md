@@ -1,8 +1,7 @@
-
-# Briefing del 20 de agosto de 2026
+# Briefing del 21 de agosto de 2026
 
 ## Tasa de cambio (remesas)
-Tasa oficial (BCV): 777.4161 Bs/USD. Tasa paralela: 901.6774 Bs/USD.
+Tasa oficial (BCV): 779.9522 Bs/USD. Tasa paralela: 890.9459 Bs/USD.
 
 ## Recordatorio de carteras
 Revisa pedidos y mensajes pendientes de D&M Dosis de Moda.
