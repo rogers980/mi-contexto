@@ -1,7 +1,7 @@
-# Briefing del 10 de septiembre de 2026
+# Briefing del 11 de septiembre de 2026
 
 ## Tasa de cambio (remesas)
-Tasa oficial (BCV): 827.7371 Bs/USD. Tasa paralela: 943.264326 Bs/USD.
+Tasa oficial (BCV): 832.4883 Bs/USD. Tasa paralela: 940.952975 Bs/USD.
 
 ## Recordatorio de carteras
 Revisa pedidos y mensajes pendientes de D&M Dosis de Moda.
