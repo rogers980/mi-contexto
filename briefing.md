@@ -1,7 +1,8 @@
-# Briefing del 19 de octubre de 2026
+# Briefing del 2026-10-20
 
 ## Tasa de cambio (remesas)
-Tasa oficial (BCV): 881.0664 Bs/USD (actualizada el 19 de octubre). Tasa paralela: 1008.279423 Bs/USD.
+- Oficial (BCV): 881.8769 Bs por USD (actualizada 2026-10-20).
+- Paralela: 1004.443962 Bs por USD.
 
 ## Recordatorio de carteras
-Revisa pedidos y mensajes pendientes de D&M Dosis de Moda.
+Revisa los pedidos y mensajes pendientes de D&M Dosis de Moda.
