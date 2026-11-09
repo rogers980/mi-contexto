@@ -1,8 +1,8 @@
-# Briefing del 2026-11-08
+# Briefing del 2026-11-09
 
 ## Tasa de cambio (remesas)
-- Oficial (BCV): 896.1225 Bs por USD (actualizada 2026-11-06).
-- Paralela: 1032.759849 Bs por USD.
+- Oficial (BCV): 897.5383 Bs por USD (actualizada 2026-11-09).
+- Paralela: 1047.796631 Bs por USD.
 
 ## Recordatorio de carteras
 Revisa los pedidos y mensajes pendientes de D&M Dosis de Moda.
